@@ -1,0 +1,23 @@
+# Node / Frontend
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+
+# .NET / Backend
+bin/
+obj/
+*.user
+
+# Uploads locais (arquivos de usuários não vão pro git)
+backend/uploads/
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

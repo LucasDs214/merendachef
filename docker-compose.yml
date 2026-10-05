@@ -1,0 +1,71 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: merendachef_db
+    restart: unless-stopped
+    environment:
+      TZ: America/Sao_Paulo
+      POSTGRES_DB: merendachef
+      POSTGRES_USER: merendachef_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U merendachef_user -d merendachef"]
+      interval: 20s
+      timeout: 15s
+      retries: 15
+      start_period: 60s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: merendachef_api
+    restart: unless-stopped
+    environment:
+      TZ: America/Sao_Paulo
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=merendachef;Username=merendachef_user;Password=${DB_PASSWORD}"
+      Jwt__Secret: ${JWT_SECRET}
+      Jwt__Issuer: MerendaChef
+      Jwt__Audience: MerendaChefUsers
+      Email__SmtpHost: smtp.office365.com
+      Email__SmtpPort: 587
+      Email__User: ${SMTP_USER}
+      Email__Password: ${SMTP_PASS}
+      Email__From: ${SMTP_USER}
+      Admin__Email: ${ADMIN_EMAIL}
+      Admin__Password: ${ADMIN_PASSWORD}
+      ASPNETCORE_URLS: http://+:8080
+      AllowedOrigins__0: http://localhost:3100
+
+    ports:
+      - "8181:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8181
+    container_name: merendachef_web
+    restart: unless-stopped
+    environment:
+      TZ: America/Sao_Paulo
+    ports:
+      - "3100:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  uploads:
