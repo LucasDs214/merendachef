@@ -1,172 +1,71 @@
-# 🍳 MerendaChef — Plataforma de Concurso Culinário FAETEC
+# 🍳 MerendaChef
 
-Sistema completo para gerenciar o concurso culinário da rede FAETEC, com módulo de inscrição para candidatos e painel administrativo completo.
+Plataforma web para gestão de concurso culinário: inscrição de candidatos em etapas,
+avaliação técnica e ranking automático com critérios de desempate.
 
----
+> Versão de portfólio, sem credenciais nem dados reais. O sistema original foi desenvolvido
+> para a rede FAETEC.
 
-## 🏗️ Arquitetura
-merendachef/
-├── backend/                  # ASP.NET Core 8 (C#)
-│   ├── Controllers/
-│   │   ├── AuthController.cs       # Login, registro, troca de senha
-│   │   ├── InscricoesController.cs # Wizard de inscrição + ingredientes
-│   │   └── AdminController.cs      # Gestão, notas, ranking
-│   ├── Models/
-│   │   └── Entities.cs             # Candidato, Inscricao, Ingrediente...
-│   ├── Data/
-│   │   └── AppDbContext.cs         # EF Core + Seed Anexo I
-│   ├── Services/
-│   │   └── EmailService.cs         # Serviço de e-mail SMTP
-│   └── Program.cs                  # DI, JWT, CORS, Migrations
-│
-├── frontend/                 # React 18 + TypeScript + Tailwind
-│   └── src/
-│       ├── App.tsx                 # Roteamento + todas as páginas
-│       ├── components/
-│       │   ├── wizard/
-│       │   │   └── InscricaoWizard.tsx  # Wizard 5 passos mobile-first
-│       │   └── admin/
-│       │       └── AdminPanel.tsx       # Painel completo + modal
-│       ├── hooks/useAuth.ts        # Zustand auth store
-│       ├── utils/api.ts            # Axios client + endpoints
-│       └── types/index.ts          # TypeScript interfaces
-│
-├── infra/
-│   └── init.sql                    # PostgreSQL init
-└── docker-compose.yml              # 3 containers orquestrados
+## Funcionalidades
 
----
+**Candidato**
+- Cadastro com CPF validado pelo algoritmo oficial
+- Wizard de inscrição em 5 etapas, mobile-first (unidade, comprovante de vínculo, receita, ingredientes, aceite LGPD)
+- Bloqueio de segunda inscrição pelo mesmo CPF
+- Upload restrito a PDF, JPG e PNG
+- Recuperação de senha por e-mail
 
-## 🚀 Como Rodar
+**Administrador**
+- Visualização das fichas técnicas e habilitação técnica (com motivo de eliminação)
+- Pontuação por critério: Viabilidade de Preparo, Criatividade, Cultura Regional e Alimentos In Natura
+- Ranking automático com desempate: In Natura → Viabilidade → Criatividade → Regional
+- Convocação para a 2ª fase com envio de e-mail
 
-### Pré-requisitos
-- Docker Engine 24+
-- Docker Compose v2
+## Stack
 
-### Configurar variáveis de ambiente
+| Camada | Tecnologias |
+|---|---|
+| Back-end | ASP.NET Core 8 (C#), Entity Framework Core, PostgreSQL, JWT, BCrypt, MailKit |
+| Front-end | React 18, TypeScript, Tailwind CSS, Zustand, Axios |
+| Infra | Docker Compose (3 containers: banco, API e nginx) |
 
-Antes de subir, configure as variáveis no `docker-compose.yml`:
+## Estrutura
 
-```env
-DB_PASSWORD=           # Senha do PostgreSQL
-JWT_SECRET=            # Chave secreta JWT (mín. 32 caracteres)
-SMTP_HOST=             # Servidor SMTP
-SMTP_PORT=             # Porta SMTP
-SMTP_USER=             # Usuário SMTP
-SMTP_PASS=             # Senha SMTP
+```
+backend/    Controllers (Auth, Candidatos, Inscricoes, Admin), Models, Data (EF Core + seed), Services (e-mail)
+frontend/   components (wizard, admin), pages, hooks (auth), utils (cliente da API)
+infra/      init.sql
 ```
 
-### Subir tudo com um comando
+## Como rodar
+
+Pré-requisitos: Docker e Docker Compose.
 
 ```bash
-cd merendachef
+cp .env.example .env      # preencha os valores com senhas de teste
 docker-compose up --build -d
 ```
 
-| Serviço     | URL                            |
-|-------------|--------------------------------|
-| Frontend    | http://localhost:3000          |
-| Backend API | http://localhost:8080          |
-| Swagger     | http://localhost:8080/swagger  |
-| PostgreSQL  | localhost:5432                 |
+| Serviço | URL |
+|---|---|
+| Frontend | http://localhost:3100 |
+| API | http://localhost:8181 |
+| PostgreSQL | localhost:5433 (somente local) |
 
-### Desenvolvimento local (sem Docker)
+O administrador inicial é criado a partir de `ADMIN_EMAIL` e `ADMIN_PASSWORD` do `.env`.
+O Swagger só fica disponível com `ASPNETCORE_ENVIRONMENT=Development`.
 
-```bash
-# Backend
-cd backend
-dotnet ef database update
-dotnet run
+## Segurança
 
-# Frontend
-cd frontend
-npm install
-npm run dev
-```
+- Senhas com BCrypt e autenticação JWT (HS256, expiração de 8h)
+- Segredos exclusivamente por variáveis de ambiente (`.env` fora do Git)
+- Validação de CPF, restrição de tipos de arquivo e CORS configurável por variável de ambiente
+- Termo de consentimento LGPD na inscrição
 
----
+## Próximos passos
 
-## 👤 Acesso Inicial
-
-Um administrador padrão é criado automaticamente na primeira inicialização do sistema.
-
-> ⚠️ Altere as credenciais padrão antes de ir para produção!
-
----
-
-## 📋 Fluxo do Sistema
-
-### Candidato
-1. **Registro** → CPF + e-mail → senha temporária enviada por e-mail
-2. **Primeiro acesso** → troca obrigatória de senha
-3. **Wizard de Inscrição** (5 passos):
-   - Passo 1: Unidade FAETEC, nome do diretor, matrícula, cargo
-   - Passo 2: Upload comprovante de vínculo (PDF/imagem)
-   - Passo 3: Nome da receita + descrição + foto opcional
-   - Passo 4: Seleção de ingredientes do Anexo I (Pregão)
-   - Passo 5: Aceite LGPD + autorização de uso de imagem
-4. **Unicidade**: sistema bloqueia 2ª inscrição pelo mesmo CPF
-
-### Administrador
-1. **Visualização** de fichas técnicas (Anexo II)
-2. **Habilitação técnica**: Habilitada ✅ ou Eliminada ❌ (com motivo)
-3. **Pontuação** (0–50 por critério):
-   - Viabilidade de Preparo
-   - Criatividade
-   - Cultura Regional
-   - Alimentos In Natura
-4. **Ranking automático** com desempate:
-   1º In Natura → 2º Viabilidade → 3º Criatividade → 4º Regional
-5. **Convocação** para 2ª fase com data, local e envio automático de e-mail
-
----
-
-## 🔐 Segurança
-
-- Senhas hasheadas com **BCrypt**
-- Autenticação via **JWT** (HS256, expiração 8h)
-- Validação de **CPF** pelo algoritmo oficial
-- Upload restrito a `.pdf`, `.jpg`, `.jpeg`, `.png`
-- Sanitização de arquivos por MIME type + extensão
-- **LGPD**: termo explícito na inscrição
-- CORS configurado via variáveis de ambiente
-
----
-
-## 🌱 Ingredientes (Seed Automático)
-
-O sistema popula automaticamente o banco com os ingredientes do Anexo I agrupados por categoria:
-
-- Grãos e Cereais
-- Proteínas Animais
-- Hortaliças — In Natura
-- Frutas — In Natura
-- Laticínios e Derivados
-- Temperos e Condimentos
-- Leguminosas
-
----
-
-## 🗃️ Banco de Dados
-
-O `Program.cs` cria as tabelas automaticamente via `EnsureCreated()` ao subir o container.
-
-Para migrations manuais:
-
-```bash
-cd backend
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-```
-
----
-
-## 🐳 Infraestrutura
-
-Três containers orquestrados via Docker Compose:
-
-| Container | Imagem | Função |
-|-----------|--------|--------|
-| `merendachef_db` | postgres:16-alpine | Banco de dados |
-| `merendachef_api` | ASP.NET Core 8 | API REST |
-| `merendachef_web` | nginx:alpine | Frontend React |
+- [ ] Testes automatizados (validação de CPF, ranking) e CI com GitHub Actions
+- [ ] Migrations do EF Core no lugar de `EnsureCreated()`
+- [ ] Acesso autenticado aos arquivos enviados
+- [ ] Rate limiting nas rotas de autenticação
+- [ ] Modularizar o `App.tsx`
